@@ -6,12 +6,9 @@ public final class TradeShop extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        // Plugin startup logic
-        getLogger().info("One second");
-    }
+        // register events
+        getServer().getPluginManager().registerEvents(new Events(), this);
 
-    @Override
-    public void onDisable() {
-        // Plugin shutdown logic
+        getLogger().info("ZNW's Tradeshop Loaded!");
     }
 }
