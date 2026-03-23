@@ -21,8 +21,6 @@ import org.bukkit.inventory.ItemStack;
 
 import com.zombienw.tradeShop.TradeShop.ShopSign;
 
-import java.util.*;
-
 
 public class Events implements Listener{
 
