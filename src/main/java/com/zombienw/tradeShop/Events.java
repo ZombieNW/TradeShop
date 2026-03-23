@@ -176,7 +176,7 @@ public class Events implements Listener{
 
     public void stylizeSign(SignChangeEvent event, ShopSign shop) {
         // Stylize
-        event.line(0, Component.text(event.getPlayer().getName() + "X", NamedTextColor.DARK_GREEN));
+        event.line(0, Component.text(event.getPlayer().getName(), NamedTextColor.DARK_GREEN));
         event.line(1, Component.text(shop.inputAmount + " " + formatName(shop.inputMaterial)));
         event.line(2, Component.text("↓", NamedTextColor.GRAY));
         event.line(3, Component.text(shop.outputAmount + " " + formatName(shop.outputMaterial)));
