@@ -92,11 +92,14 @@ public class Events implements Listener{
             return;
         }
 
-        Material held = player.getInventory().getItemInMainHand().getType();
-        if (held == Material.AIR) {
+        ItemStack heldItem = player.getInventory().getItemInMainHand();
+        if (heldItem.getType() == Material.AIR) {
             player.sendMessage(Component.text("Hold the item you want to assign!", NamedTextColor.RED));
             return;
         }
+
+        ItemStack template = heldItem.clone();
+        template.setAmount(1);
 
         ShopSign pending = ShopUtils.loadPendingData(sign);
         if (pending == null) {
@@ -106,24 +109,26 @@ public class Events implements Listener{
 
         boolean line2IsHand = line2.endsWith("[Hand]");
 
-        Material resolvedIn  = line2IsHand && pending.inputMaterial() == null ? held : pending.inputMaterial();
-        Material resolvedOut = !line2IsHand && pending.outputMaterial() == null ? held : pending.outputMaterial();
+        ItemStack resolvedIn  = (line2IsHand  && pending.inputItem()  == null) ? template : pending.inputItem();
+        ItemStack resolvedOut = (!line2IsHand && pending.outputItem() == null) ? template : pending.outputItem();
+
+        if (resolvedIn == null || resolvedOut == null) {
+            player.sendMessage(Component.text("Something went wrong loading shop data!", NamedTextColor.RED));
+            return;
+        }
 
         ShopSign resolved = new ShopSign(resolvedIn, pending.inputAmount(), resolvedOut, pending.outputAmount());
 
-        // Update the sign line that was just filled
         ShopUtils.updateSignLine(sign, line2IsHand ? 1 : 3,
-                line2IsHand ? resolved.inputAmount() : resolved.outputAmount(),
-                line2IsHand ? resolved.inputMaterial() : resolved.outputMaterial());
+                line2IsHand ? resolved.inputAmount()  : resolved.outputAmount(),
+                line2IsHand ? resolved.inputItem()    : resolved.outputItem());
 
         if (resolved.isPending()) {
-            // First [Hand] filled, one slot still remains
             ShopUtils.savePendingData(sign, resolved);
             player.sendMessage(Component.text("Now right-click with the output item!", NamedTextColor.YELLOW));
             return;
         }
 
-        // Fully resolved
         ShopUtils.saveShopData(sign, resolved);
         ShopUtils.clearPendingData(sign);
         player.sendMessage(Component.text("Shop created!", NamedTextColor.GREEN));
@@ -141,22 +146,22 @@ public class Events implements Listener{
         Inventory shopInventory   = container.getInventory();
         Inventory playerInventory = player.getInventory();
 
-        if (!InventoryUtils.hasItems(playerInventory, shop.inputMaterial(), shop.inputAmount())) {
+        if (!InventoryUtils.hasItems(playerInventory, shop.inputItem(), shop.inputAmount())) {
             player.sendMessage(Component.text("You don't have enough " + ShopUtils.formatName(shop.inputMaterial()) + "!", NamedTextColor.RED));
             return;
         }
 
-        if (!InventoryUtils.hasItems(shopInventory, shop.outputMaterial(), shop.outputAmount())) {
+        if (!InventoryUtils.hasItems(shopInventory, shop.outputItem(), shop.outputAmount())) {
             player.sendMessage(Component.text("This shop is out of stock!", NamedTextColor.RED));
             return;
         }
 
         // Do the trade
-        InventoryUtils.removeItems(playerInventory, shop.inputMaterial(), shop.inputAmount());
-        InventoryUtils.addItems(shopInventory, new ItemStack(shop.inputMaterial(), shop.inputAmount()));
+        InventoryUtils.removeItems(playerInventory, shop.inputItem(),  shop.inputAmount());
+        InventoryUtils.addItems(shopInventory, shop.inputItem().asQuantity(shop.inputAmount()));
 
-        InventoryUtils.removeItems(shopInventory, shop.outputMaterial(), shop.outputAmount());
-        InventoryUtils.addItems(playerInventory, new ItemStack(shop.outputMaterial(), shop.outputAmount()));
+        InventoryUtils.removeItems(shopInventory,   shop.outputItem(), shop.outputAmount());
+        InventoryUtils.addItems(playerInventory, shop.outputItem().asQuantity(shop.outputAmount()));
 
         player.sendMessage(Component.text("Trade successful!", NamedTextColor.GREEN));
         player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);

@@ -15,9 +15,14 @@ import org.bukkit.block.sign.Side;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.inventory.DoubleChestInventory;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.util.io.BukkitObjectInputStream;
+import org.bukkit.util.io.BukkitObjectOutputStream;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -34,35 +39,54 @@ public class ShopUtils {
     // PDC Classes
     private static TradeShop plugin() { return TradeShop.getPlugin(TradeShop.class); }
 
-    private static NamespacedKey keyInputMaterial() { return new NamespacedKey(plugin(), "input_material"); }
+    private static NamespacedKey keyInputItem() { return new NamespacedKey(plugin(), "input_item"); }
     private static NamespacedKey keyInputAmount() { return new NamespacedKey(plugin(), "input_amount"); }
-    private static NamespacedKey keyOutputMaterial() { return new NamespacedKey(plugin(), "output_material"); }
+    private static NamespacedKey keyOutputItem() { return new NamespacedKey(plugin(), "output_item"); }
     private static NamespacedKey keyOutputAmount() { return new NamespacedKey(plugin(), "output_amount"); }
-    private static NamespacedKey keyPendingInputMaterial() { return new NamespacedKey(plugin(), "pending_input_material"); }
+    private static NamespacedKey keyPendingInputItem() { return new NamespacedKey(plugin(), "pending_input_item"); }
     private static NamespacedKey keyPendingInputAmount() { return new NamespacedKey(plugin(), "pending_input_amount"); }
-    private static NamespacedKey keyPendingOutputMaterial() { return new NamespacedKey(plugin(), "pending_output_material"); }
+    private static NamespacedKey keyPendingOutputItem() { return new NamespacedKey(plugin(), "pending_output_item"); }
     private static NamespacedKey keyPendingOutputAmount() { return new NamespacedKey(plugin(), "pending_output_amount"); }
+
+    private static byte[] serializeItem(ItemStack item) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             BukkitObjectOutputStream boos = new BukkitObjectOutputStream(baos)) {
+            boos.writeObject(item);
+            return baos.toByteArray();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static ItemStack deserializeItem(byte[] data) {
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(data);
+             BukkitObjectInputStream bois = new BukkitObjectInputStream(bais)) {
+            return (ItemStack) bois.readObject();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
 
     // Save shop data to sign PDC
     public static void saveShopData(Sign sign, ShopSign shop) {
         PersistentDataContainer pdc = sign.getPersistentDataContainer();
-        pdc.set(keyInputMaterial(),  PersistentDataType.STRING,  shop.inputMaterial().name());
-        pdc.set(keyInputAmount(),    PersistentDataType.INTEGER, shop.inputAmount());
-        pdc.set(keyOutputMaterial(), PersistentDataType.STRING,  shop.outputMaterial().name());
-        pdc.set(keyOutputAmount(),   PersistentDataType.INTEGER, shop.outputAmount());
+        pdc.set(keyInputItem(), PersistentDataType.BYTE_ARRAY, serializeItem(shop.inputItem()));
+        pdc.set(keyInputAmount(), PersistentDataType.INTEGER, shop.inputAmount());
+        pdc.set(keyOutputItem(), PersistentDataType.BYTE_ARRAY, serializeItem(shop.outputItem()));
+        pdc.set(keyOutputAmount(), PersistentDataType.INTEGER, shop.outputAmount());
         sign.update();
     }
 
     // Load shop data from sign PDC
     public static ShopSign loadShopData(Sign sign) {
         PersistentDataContainer pdc = sign.getPersistentDataContainer();
-        if (!pdc.has(keyInputMaterial(), PersistentDataType.STRING)) return null;
-
+        if (!pdc.has(keyInputItem(), PersistentDataType.BYTE_ARRAY)) return null;
         try {
-            Material in  = Material.valueOf(pdc.get(keyInputMaterial(),  PersistentDataType.STRING));
-            Material out = Material.valueOf(pdc.get(keyOutputMaterial(), PersistentDataType.STRING));
-            int amtIn    = pdc.get(keyInputAmount(),  PersistentDataType.INTEGER);
-            int amtOut   = pdc.get(keyOutputAmount(), PersistentDataType.INTEGER);
+            ItemStack in = deserializeItem(pdc.get(keyInputItem(),  PersistentDataType.BYTE_ARRAY));
+            ItemStack out = deserializeItem(pdc.get(keyOutputItem(), PersistentDataType.BYTE_ARRAY));
+            int amtIn = pdc.get(keyInputAmount(),  PersistentDataType.INTEGER);
+            int amtOut = pdc.get(keyOutputAmount(), PersistentDataType.INTEGER);
             return new ShopSign(in, amtIn, out, amtOut);
         } catch (Exception e) {
             return null;
@@ -71,10 +95,10 @@ public class ShopUtils {
 
     public static void savePendingData(Sign sign, ShopSign shop) {
         PersistentDataContainer pdc = sign.getPersistentDataContainer();
-        if (shop.inputMaterial() != null)
-            pdc.set(keyPendingInputMaterial(),  PersistentDataType.STRING,  shop.inputMaterial().name());
-        if (shop.outputMaterial() != null)
-            pdc.set(keyPendingOutputMaterial(), PersistentDataType.STRING,  shop.outputMaterial().name());
+        if (shop.inputItem() != null)
+            pdc.set(keyPendingInputItem(),  PersistentDataType.BYTE_ARRAY, serializeItem(shop.inputItem()));
+        if (shop.outputItem() != null)
+            pdc.set(keyPendingOutputItem(), PersistentDataType.BYTE_ARRAY, serializeItem(shop.outputItem()));
         pdc.set(keyPendingInputAmount(),  PersistentDataType.INTEGER, shop.inputAmount());
         pdc.set(keyPendingOutputAmount(), PersistentDataType.INTEGER, shop.outputAmount());
         sign.update();
@@ -84,23 +108,21 @@ public class ShopUtils {
         PersistentDataContainer pdc = sign.getPersistentDataContainer();
         if (!pdc.has(keyPendingInputAmount(), PersistentDataType.INTEGER)) return null;
 
-        // Materials may be null if that slot was [Hand]
-        Material in = pdc.has(keyPendingInputMaterial(), PersistentDataType.STRING)
-                ? Material.valueOf(pdc.get(keyPendingInputMaterial(), PersistentDataType.STRING)) : null;
-        Material out = pdc.has(keyPendingOutputMaterial(), PersistentDataType.STRING)
-                ? Material.valueOf(pdc.get(keyPendingOutputMaterial(), PersistentDataType.STRING)) : null;
+        ItemStack in = pdc.has(keyPendingInputItem(), PersistentDataType.BYTE_ARRAY)
+                ? deserializeItem(pdc.get(keyPendingInputItem(), PersistentDataType.BYTE_ARRAY)) : null;
+        ItemStack out = pdc.has(keyPendingOutputItem(), PersistentDataType.BYTE_ARRAY)
+                ? deserializeItem(pdc.get(keyPendingOutputItem(), PersistentDataType.BYTE_ARRAY)) : null;
 
-        int amtIn  = pdc.get(keyPendingInputAmount(),  PersistentDataType.INTEGER);
-        int amtOut = pdc.get(keyPendingOutputAmount(),  PersistentDataType.INTEGER);
-
+        int amtIn  = pdc.get(keyPendingInputAmount(), PersistentDataType.INTEGER);
+        int amtOut = pdc.get(keyPendingOutputAmount(), PersistentDataType.INTEGER);
         return new ShopSign(in, amtIn, out, amtOut);
     }
 
     public static void clearPendingData(Sign sign) {
         PersistentDataContainer pdc = sign.getPersistentDataContainer();
-        pdc.remove(keyPendingInputMaterial());
+        pdc.remove(keyPendingInputItem());
         pdc.remove(keyPendingInputAmount());
-        pdc.remove(keyPendingOutputMaterial());
+        pdc.remove(keyPendingOutputItem());
         pdc.remove(keyPendingOutputAmount());
         sign.update();
     }
@@ -123,17 +145,21 @@ public class ShopUtils {
             int amountIn  = Integer.parseInt(splitIn[0]);
             int amountOut = Integer.parseInt(splitOut[0]);
 
-            // [Hand] means material will be filled in later; otherwise resolve now
-            Material materialIn  = splitIn[1].equalsIgnoreCase("[Hand]")
-                    ? null : Material.matchMaterial(splitIn[1].replace(" ", "_").toUpperCase());
-            Material materialOut = splitOut[1].equalsIgnoreCase("[Hand]")
-                    ? null : Material.matchMaterial(splitOut[1].replace(" ", "_").toUpperCase());
+            ItemStack itemIn  = null;
+            ItemStack itemOut = null;
 
-            // Non-[Hand] entries must be valid materials
-            if (materialIn == null  && !splitIn[1].equalsIgnoreCase("[Hand]"))  return null;
-            if (materialOut == null && !splitOut[1].equalsIgnoreCase("[Hand]")) return null;
+            if (!splitIn[1].equalsIgnoreCase("[Hand]")) {
+                Material m = Material.matchMaterial(splitIn[1].replace(" ", "_").toUpperCase());
+                if (m == null) return null;
+                itemIn = new ItemStack(m);
+            }
+            if (!splitOut[1].equalsIgnoreCase("[Hand]")) {
+                Material m = Material.matchMaterial(splitOut[1].replace(" ", "_").toUpperCase());
+                if (m == null) return null;
+                itemOut = new ItemStack(m);
+            }
 
-            return new ShopSign(materialIn, amountIn, materialOut, amountOut);
+            return new ShopSign(itemIn, amountIn, itemOut, amountOut);
         } catch (Exception e) {
             return null;
         }
@@ -158,8 +184,9 @@ public class ShopUtils {
     }
 
     // change sign line
-    public static void updateSignLine(Sign sign, int lineIndex, int amount, Material material) {
-        sign.getSide(Side.FRONT).line(lineIndex, Component.text(amount + " " + formatName(material)));
+    public static void updateSignLine(Sign sign, int lineIndex, int amount, ItemStack item) {
+        sign.getSide(Side.FRONT).line(lineIndex,
+                Component.text(amount + " " + formatName(item.getType())));
         sign.update();
     }
 
@@ -168,10 +195,8 @@ public class ShopUtils {
         if (block == null || !(block.getBlockData() instanceof WallSign)) return null;
         if (!(block.getState() instanceof Sign sign)) return null;
 
-        // PDC check
-        if (sign.getPersistentDataContainer().has(keyInputMaterial(), PersistentDataType.STRING)) return sign;
+        if (sign.getPersistentDataContainer().has(keyInputItem(), PersistentDataType.BYTE_ARRAY)) return sign;
 
-        // check if it still has Hand markers
         String line3 = serialize(sign.getSide(Side.FRONT).line(2));
         String line2 = serialize(sign.getSide(Side.FRONT).line(1));
         String line4 = serialize(sign.getSide(Side.FRONT).line(3));
