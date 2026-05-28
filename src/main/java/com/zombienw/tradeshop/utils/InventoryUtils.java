@@ -1,61 +1,74 @@
-package com.zombienw.tradeShop;
+package com.zombienw.tradeshop.utils;
 
-import org.bukkit.Material;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.Map;
-import java.util.Objects;
 
 public class InventoryUtils {
+
     private InventoryUtils() {}
 
-    // Checks if amount many items exist in given inventoryReturns true if the inventory contains at least amount many of the given item
+    // See if amount many items exist in inventory the old-fashioned way
     public static boolean hasItems(Inventory inv, ItemStack template, int amount) {
         int found = 0;
+
+        // loop through the itemstacks in the inventory
         for (ItemStack stack : inv.getContents()) {
             if (stack == null) continue;
+
             if (itemMatches(stack, template)) {
                 found += stack.getAmount();
-                if (found >= amount) return true;
+                if (found >= amount) return true; // we got what we came here for
             }
         }
         return false;
     }
 
-    // removes amount many items from given inventory based on template
+    // Remove amount many items from inventory the old-fashioned way
     public static void removeItems(Inventory inv, ItemStack template, int amount) {
         int remaining = amount;
+        // virtual inventory copy
         ItemStack[] contents = inv.getContents();
+
+        // loop while there are items in the inventory and items remaining
         for (int i = 0; i < contents.length && remaining > 0; i++) {
             ItemStack stack = contents[i];
-            if (stack == null || !itemMatches(stack, template)) continue;
 
+            if (!itemMatches(stack, template)) continue;
+
+            // remove from quota
             if (stack.getAmount() <= remaining) {
+                // remove the whole stack and keep going
                 remaining -= stack.getAmount();
                 contents[i] = null;
             } else {
+                // remove what we want from the stack and stop
                 stack.setAmount(stack.getAmount() - remaining);
                 remaining = 0;
             }
         }
+
+        // put the inventory back
         inv.setContents(contents);
     }
 
-    // give items to player/chest
+    // Add items to inventory and drop them if it overflows
     public static void addItems(Inventory inv, ItemStack item) {
         Map<Integer, ItemStack> leftovers = inv.addItem(item.clone());
-        // drop item on ground if player's inventory is full
-        for (ItemStack leftover : leftovers.values()) {
-            Objects.requireNonNull(inv.getLocation()).getWorld().dropItemNaturally(inv.getLocation(), leftover);
+
+        // drop the remaining items
+        if (inv.getLocation() != null && inv.getLocation().getWorld() != null) {
+            for (ItemStack leftover : leftovers.values()) {
+                inv.getLocation().getWorld().dropItemNaturally(inv.getLocation(), leftover);
+            }
         }
     }
 
-    // checks if two items matched based on material and nbt
+    // Compare two objects based on their material and desired nbt tags
     public static boolean itemMatches(ItemStack a, ItemStack b) {
         if (a == null || b == null) return false;
         if (a.getType() != b.getType()) return false;
-        // isSimilar checks type + meta/components, ignores amount
         return a.isSimilar(b);
     }
 }
