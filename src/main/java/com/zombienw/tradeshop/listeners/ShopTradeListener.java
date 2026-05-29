@@ -3,10 +3,12 @@ package com.zombienw.tradeshop.listeners;
 import com.zombienw.tradeshop.Constants;
 import com.zombienw.tradeshop.managers.ShopManager;
 import com.zombienw.tradeshop.models.ShopData;
+import com.zombienw.tradeshop.utils.BlockUtils;
 import com.zombienw.tradeshop.utils.FormatUtils;
 import com.zombienw.tradeshop.utils.InventoryUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.Container;
@@ -19,6 +21,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
 public class ShopTradeListener implements Listener {
@@ -67,6 +70,7 @@ public class ShopTradeListener implements Listener {
         // make sure shop has stock
         if (!InventoryUtils.hasItems(shopInventory, shop.outputItem(), shop.outputAmount())) {
             player.sendMessage(Component.text("This shop is out of stock!", NamedTextColor.RED));
+            notifyShopOwnerOfOutOfStock(BlockUtils.getSignOwner(sign), shop.outputItem());
             return;
         }
 
@@ -78,5 +82,24 @@ public class ShopTradeListener implements Listener {
 
         player.sendMessage(Component.text("Trade successful!", NamedTextColor.GREEN));
         player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
+
+        notifyShopOwnerOfSale(player, BlockUtils.getSignOwner(sign), shop.outputItem(), shop.outputAmount());
+    }
+
+    // send a little message in the chat to the shop owner
+    public void notifyShopOwnerOfSale(@NotNull Player shopper, String ownerUsername, ItemStack soldItem, int soldAmount) {
+        Player owner = Bukkit.getPlayer(ownerUsername);
+        if (owner == null || !owner.isOnline()) return;
+
+        owner.sendMessage(Component.text(shopper.getName() + " bought " + soldAmount + " " + FormatUtils.stripBrackets(FormatUtils.serialize(soldItem.displayName())), NamedTextColor.GREEN));
+        owner.playSound(owner.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.25f, 1f);
+    }
+
+    public void notifyShopOwnerOfOutOfStock(String ownerUsername, ItemStack soldItem) {
+        Player owner = Bukkit.getPlayer(ownerUsername);
+        if (owner == null || !owner.isOnline()) return;
+
+        owner.sendMessage(Component.text("Your " + FormatUtils.stripBrackets(FormatUtils.serialize(soldItem.displayName())) + " shop is out of stock!", NamedTextColor.RED));
+        owner.playSound(owner.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.25f, 1f);
     }
 }

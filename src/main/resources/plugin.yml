@@ -1,4 +1,4 @@
 name: TradeShop
-version: '1.4-SNAPSHOT'
+version: '1.5'
 main: com.zombienw.tradeshop.TradeShop
 api-version: '26.1'

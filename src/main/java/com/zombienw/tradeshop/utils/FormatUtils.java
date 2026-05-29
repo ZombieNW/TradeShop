@@ -15,6 +15,17 @@ public class FormatUtils {
         return PlainTextComponentSerializer.plainText().serialize(component).trim();
     }
 
+    // [Diamond Helmet] -> Diamond Helmet
+    public static String stripBrackets(String input) {
+        if (input == null || input.length() < 2) return input;
+
+        if (input.startsWith("[") && input.endsWith("]")) {
+            return input.substring(1, input.length() - 1);
+        }
+
+        return input;
+    }
+
     // format "N Item"
     public static Component formatSignLine(int amount, Material material) {
         if (material == null) {
