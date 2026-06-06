@@ -2,6 +2,7 @@ package com.zombienw.tradeshop.managers;
 
 import com.zombienw.tradeshop.TradeShop;
 import com.zombienw.tradeshop.models.ShopData;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.Sign;
 import org.bukkit.inventory.ItemStack;
@@ -12,6 +13,7 @@ import org.bukkit.util.io.BukkitObjectOutputStream;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.util.Optional;
 
 public class ShopManager {
 
@@ -22,6 +24,10 @@ public class ShopManager {
     private final NamespacedKey keyInputAmount;
     private final NamespacedKey keyOutputItem;
     private final NamespacedKey keyOutputAmount;
+
+    // Legacy Shop Item Keys
+    private final NamespacedKey legacyKeyInputItem;
+    private final NamespacedKey legacyKeyOutputItem;
 
     // Pending Item Keys
     private final NamespacedKey keyPendingInputItem;
@@ -37,6 +43,10 @@ public class ShopManager {
         this.keyInputAmount = new NamespacedKey(plugin, "input_amount");
         this.keyOutputItem = new NamespacedKey(plugin, "output_item");
         this.keyOutputAmount = new NamespacedKey(plugin, "output_amount");
+
+        // Legacy
+        this.legacyKeyInputItem = new NamespacedKey(plugin, "input_material");
+        this.legacyKeyOutputItem = new NamespacedKey(plugin, "output_material");
 
         this.keyPendingInputItem = new NamespacedKey(plugin, "pending_input_item");
         this.keyPendingInputAmount = new NamespacedKey(plugin, "pending_input_amount");
@@ -56,12 +66,14 @@ public class ShopManager {
 
     // Get PDC shop data from sign
     public ShopData loadShopData(Sign sign) {
+        if (!isRegisteredShop(sign)) return null;
         PersistentDataContainer pdc = sign.getPersistentDataContainer();
-        if (!pdc.has(keyInputItem, PersistentDataType.BYTE_ARRAY)) return null;
 
         try {
             ItemStack in = deserializeItem(pdc.get(keyInputItem, PersistentDataType.BYTE_ARRAY));
             ItemStack out = deserializeItem(pdc.get(keyOutputItem, PersistentDataType.BYTE_ARRAY));
+            if (in == null) in = materializeItem(pdc.get(legacyKeyInputItem, PersistentDataType.STRING));
+            if (out == null) out = materializeItem(pdc.get(legacyKeyOutputItem, PersistentDataType.STRING));
             int amtIn = pdc.get(keyInputAmount, PersistentDataType.INTEGER);
             int amtOut = pdc.get(keyOutputAmount, PersistentDataType.INTEGER);
             return new ShopData(in, amtIn, out, amtOut);
@@ -112,7 +124,12 @@ public class ShopManager {
 
     // See if a sign is a shop by if it has an item
     public boolean isRegisteredShop(Sign sign) {
-        return sign.getPersistentDataContainer().has(keyInputItem, PersistentDataType.BYTE_ARRAY);
+        var pdc = sign.getPersistentDataContainer();
+
+        boolean hasInput = pdc.has(keyInputItem, PersistentDataType.BYTE_ARRAY)  || pdc.has(legacyKeyInputItem, PersistentDataType.STRING);
+        boolean hasOutput = pdc.has(keyOutputItem, PersistentDataType.BYTE_ARRAY) || pdc.has(legacyKeyOutputItem, PersistentDataType.STRING);
+
+        return hasInput && hasOutput;
     }
 
     // turn itemstack into data to put on the sign PDC
@@ -136,5 +153,14 @@ public class ShopManager {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    // Get itemstack from material name for legacy signs
+    public ItemStack materializeItem(String materialName) {
+        if (materialName == null || materialName.isBlank()) return null;
+
+        Material material = Material.valueOf(materialName);
+
+        return new ItemStack(material, 1);
     }
 }
