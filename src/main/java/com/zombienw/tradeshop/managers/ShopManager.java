@@ -10,6 +10,7 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.io.BukkitObjectInputStream;
 import org.bukkit.util.io.BukkitObjectOutputStream;
+import org.checkerframework.checker.units.qual.N;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -48,6 +49,7 @@ public class ShopManager {
         this.legacyKeyInputItem = new NamespacedKey(plugin, "input_material");
         this.legacyKeyOutputItem = new NamespacedKey(plugin, "output_material");
 
+        // Pending Items
         this.keyPendingInputItem = new NamespacedKey(plugin, "pending_input_item");
         this.keyPendingInputAmount = new NamespacedKey(plugin, "pending_input_amount");
         this.keyPendingOutputItem = new NamespacedKey(plugin, "pending_output_item");
