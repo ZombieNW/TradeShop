@@ -22,12 +22,6 @@ public class BlockUtils {
     // get username as string from top line of sign
     public static String getSignOwner(Sign sign) {
         String usernameLine = FormatUtils.serialize(sign.getSide(Side.FRONT).line(0));
-
-        // remove shop sign formatting code bug
-        if (usernameLine.matches("^&[0-9a-fk-orA-FK-OR].*")) {
-            return usernameLine.substring(2);
-        }
-
         return usernameLine;
     }
 

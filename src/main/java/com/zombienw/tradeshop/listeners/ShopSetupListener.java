@@ -62,6 +62,8 @@ public class ShopSetupListener implements Listener {
             } else {
                 shopManager.saveShopData(sign, shopData);
             }
+
+            checkIncorrectFormatting(sign);
         });
 
         if (shopData.isPending()) {
@@ -84,6 +86,29 @@ public class ShopSetupListener implements Listener {
 
         // send it to the handler
         handleHandResolution(event.getPlayer(), sign, line2);
+    }
+
+    /**
+     * Due to a reported bug involving a plugin that removes sign formatting,
+     * this method checks for format symbols and removes them.
+     * @param sign Affected sign
+     */
+    private void checkIncorrectFormatting(Sign sign) {
+        String regex = "^&[0-9a-fk-orA-FK-OR].*";
+
+        // username line
+        String line0 = FormatUtils.serialize(sign.getSide(Side.FRONT).line(0));
+        if (line0.matches(regex)) {
+            sign.getSide(Side.FRONT).line(0, net.kyori.adventure.text.Component.text(line0.substring(2)));
+        }
+
+        // arrow line
+        String line2 = FormatUtils.serialize(sign.getSide(Side.FRONT).line(2));
+        if (line2.matches(regex)) {
+            sign.getSide(Side.FRONT).line(2, net.kyori.adventure.text.Component.text(line2.substring(2)));
+        }
+
+        sign.update();
     }
 
     // handler for filling in [Hand]'s
