@@ -75,9 +75,8 @@ public class ShopTradeListener implements Listener {
         }
 
         InventoryUtils.removeItems(playerInventory, shop.inputItem(), shop.inputAmount());
-        InventoryUtils.addItems(shopInventory, shop.inputItem().asQuantity(shop.inputAmount()));
-
         InventoryUtils.removeItems(shopInventory, shop.outputItem(), shop.outputAmount());
+        InventoryUtils.addItems(shopInventory, shop.inputItem().asQuantity(shop.inputAmount()));
         InventoryUtils.addItems(playerInventory, shop.outputItem().asQuantity(shop.outputAmount()));
 
         player.sendMessage(Component.text("Trade successful!", NamedTextColor.GREEN));
